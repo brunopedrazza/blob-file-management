@@ -1,0 +1,106 @@
+#!/bin/bash
+
+# Load the .env file from the path specified in BLOB_ENV_PATH
+if [ -z "$BLOB_ENV_PATH" ]; then
+    echo "Error: BLOB_ENV_PATH is not set. Please set it in your ~/.zshrc file."
+    exit 1
+fi
+
+if [ ! -f "$BLOB_ENV_PATH" ]; then
+    echo "Error: No .env file found at $BLOB_ENV_PATH. Please check the path."
+    exit 1
+fi
+
+source "$BLOB_ENV_PATH"
+
+# Check for correct usage
+if [ "$#" -ne 2 ]; then
+    echo "Usage: blob <pull|push|diff> <local_file_path>"
+    exit 1
+fi
+
+COMMAND=$1
+LOCAL_FILE_PATH=$2
+
+# Get the blob name from the local file name
+BLOB_NAME=$(basename "$LOCAL_FILE_PATH")
+
+# Ensure required environment variables are set
+if [[ -z "$AZURE_STORAGE_ACCOUNT_NAME" || -z "$AZURE_STORAGE_CONTAINER_NAME" ]]; then
+    echo "Error: Please set AZURE_STORAGE_ACCOUNT_NAME and AZURE_STORAGE_CONTAINER_NAME in the .env file."
+    exit 1
+fi
+
+# Define a function to download the blob for diffing
+download_blob_for_diff() {
+    TEMP_FILE=$(mktemp)
+    az storage blob download \
+        --account-name "$AZURE_STORAGE_ACCOUNT_NAME" \
+        --container-name "$AZURE_STORAGE_CONTAINER_NAME" \
+        --name "$BLOB_NAME" \
+        --file "$TEMP_FILE" \
+        --overwrite \
+        --auth-mode login > /dev/null 2>&1
+
+    # Check if download was successful
+    if [ $? -ne 0 ]; then
+        echo "Error: Authorization failed or incorrect credentials. Please ensure you have the correct permissions and try again."
+        rm -f "$TEMP_FILE"
+        TEMP_FILE=""
+    fi
+}
+
+case $COMMAND in
+    pull)
+        az storage blob download \
+            --account-name "$AZURE_STORAGE_ACCOUNT_NAME" \
+            --container-name "$AZURE_STORAGE_CONTAINER_NAME" \
+            --name "$BLOB_NAME" \
+            --file "$LOCAL_FILE_PATH" \
+            --overwrite \
+            --auth-mode login > /dev/null 2>&1
+        if [ $? -ne 0 ]; then
+            echo "Error: Authorization failed or incorrect credentials for 'pull' command. Please ensure you have the correct permissions and try again."
+            exit 1
+        fi
+        echo "Pulled successfully to $LOCAL_FILE_PATH"
+        ;;
+    
+    push)
+        az storage blob upload \
+            --account-name "$AZURE_STORAGE_ACCOUNT_NAME" \
+            --container-name "$AZURE_STORAGE_CONTAINER_NAME" \
+            --name "$BLOB_NAME" \
+            --file "$LOCAL_FILE_PATH" \
+            --overwrite \
+            --auth-mode login > /dev/null 2>&1
+        if [ $? -ne 0 ]; then
+            echo "Error: Authorization failed or incorrect credentials for 'push' command. Please ensure you have the correct permissions and try again."
+            exit 1
+        fi
+        echo "Pushed successfully to blob storage."
+        ;;
+    
+    diff)
+        download_blob_for_diff  # Call function to set TEMP_FILE
+
+        # Check if TEMP_FILE is a valid file
+        if [[ -n "$TEMP_FILE" && -f "$TEMP_FILE" ]]; then
+            # Use colordiff if available, otherwise fall back to git diff
+            if command -v colordiff &> /dev/null; then
+                colordiff "$TEMP_FILE" "$LOCAL_FILE_PATH"
+            else
+                git diff --no-index "$TEMP_FILE" "$LOCAL_FILE_PATH"
+            fi
+            rm -f "$TEMP_FILE"
+        else
+            echo "Error: Unable to download blob for diff. Please check your connection and permissions."
+            exit 1
+        fi
+        ;;
+    
+    *)
+        echo "Error: Invalid command. Usage: blob <pull|push|diff> <local_file_path>"
+        exit 1
+        ;;
+esac
