@@ -52,6 +52,10 @@ download_blob_for_diff() {
 
 case $COMMAND in
     pull)
+        # Ensure the directory exists
+        mkdir -p "$(dirname "$LOCAL_FILE_PATH")"
+
+        # Download the file from Azure Blob Storage
         az storage blob download \
             --account-name "$AZURE_STORAGE_ACCOUNT_NAME" \
             --container-name "$AZURE_STORAGE_CONTAINER_NAME" \
@@ -59,6 +63,7 @@ case $COMMAND in
             --file "$LOCAL_FILE_PATH" \
             --overwrite \
             --auth-mode login > /dev/null 2>&1
+
         if [ $? -ne 0 ]; then
             echo "Error: Authorization failed or incorrect credentials for 'pull' command. Please ensure you have the correct permissions and try again."
             exit 1
