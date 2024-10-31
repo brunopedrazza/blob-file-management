@@ -88,9 +88,9 @@ case $COMMAND in
         if [[ -n "$TEMP_FILE" && -f "$TEMP_FILE" ]]; then
             # Use colordiff if available, otherwise fall back to git diff
             if command -v colordiff &> /dev/null; then
-                colordiff "$TEMP_FILE" "$LOCAL_FILE_PATH"
+                colordiff -U 3 "$TEMP_FILE" "$LOCAL_FILE_PATH"
             else
-                git diff --no-index "$TEMP_FILE" "$LOCAL_FILE_PATH"
+                git diff --unified=3 --no-index "$TEMP_FILE" "$LOCAL_FILE_PATH"
             fi
             rm -f "$TEMP_FILE"
         else
