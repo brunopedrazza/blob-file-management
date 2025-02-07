@@ -19,7 +19,7 @@ A command-line utility to manage files in Azure Blob Storage with Git-style comm
 
 1. **Clone the Repository**:
    ```bash
-   git clone https://github.com/yourusername/blob-file-management.git
+   git clone https://github.com/brunopedrazza/blob-file-management.git
    cd blob-file-management
    ```
 
