@@ -15,7 +15,7 @@ source "$BLOB_ENV_PATH"
 
 # Check for correct usage
 if [ "$#" -ne 2 ]; then
-    echo "Usage: blob <pull|push|diff> <local_file_path>"
+    echo "Usage: blob <pull|push|diff|get> <local_file_path>"
     exit 1
 fi
 
@@ -104,8 +104,22 @@ case $COMMAND in
         fi
         ;;
     
+    get)
+        # Download and print the blob content to stdout
+        az storage blob download \
+            --account-name "$AZURE_STORAGE_ACCOUNT_NAME" \
+            --container-name "$AZURE_STORAGE_CONTAINER_NAME" \
+            --name "$BLOB_NAME" \
+            --auth-mode login 2>/dev/null
+
+        if [ $? -ne 0 ]; then
+            echo "Error: Authorization failed or incorrect credentials for 'get' command. Please ensure you have the correct permissions and try again." >&2
+            exit 1
+        fi
+        ;;
+    
     *)
-        echo "Error: Invalid command. Usage: blob <pull|push|diff> <local_file_path>"
+        echo "Error: Invalid command. Usage: blob <pull|push|diff|get> <local_file_path>"
         exit 1
         ;;
 esac
