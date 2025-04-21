@@ -15,7 +15,7 @@ source "$BLOB_ENV_PATH"
 
 # Check for correct usage
 if [ "$#" -ne 2 ]; then
-    echo "Usage: blob <pull|push|diff|get> <local_file_path>"
+    echo "Usage: blob <pull|push|diff|stat|get> <local_file_path>"
     exit 1
 fi
 
@@ -117,9 +117,19 @@ case $COMMAND in
             exit 1
         fi
         ;;
+    stat)
+        # Show metadata for the blob
+        az storage blob show \
+            --account-name "$AZURE_STORAGE_ACCOUNT_NAME" \
+            --container-name "$AZURE_STORAGE_CONTAINER_NAME" \
+            --name "$BLOB_NAME" \
+            --auth-mode login \
+            --output json \
+            || { echo "Error: Failed to retrieve metadata for '$BLOB_NAME'. Please ensure the blob exists and you have the correct permissions."; exit 1; }
+        ;;
     
     *)
-        echo "Error: Invalid command. Usage: blob <pull|push|diff|get> <local_file_path>"
+        echo "Error: Invalid command. Usage: blob <pull|push|diff|stat|get> <local_file_path>"
         exit 1
         ;;
 esac
